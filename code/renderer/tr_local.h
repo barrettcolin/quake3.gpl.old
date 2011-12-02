@@ -498,7 +498,8 @@ typedef struct {
 	int			frameSceneNum;		// copied from tr.frameSceneNum
 	int			frameCount;			// copied from tr.frameCount
 	cplane_t	portalPlane;		// clip anything behind this if mirroring
-	int			viewportX, viewportY, viewportWidth, viewportHeight;
+	short		viewportX, viewportY, viewportWidth, viewportHeight;
+    short       scissorMinX, scissorMaxX, scissorMinY, scissorMaxY;
 	float		fovX, fovY;
 	float		projectionMatrix[16];
 	cplane_t	frustum[4];
@@ -1084,6 +1085,8 @@ extern	cvar_t	*r_debugSort;
 
 extern	cvar_t	*r_printShaders;
 extern	cvar_t	*r_saveFontData;
+
+extern cvar_t *r_subviewScissor;
 
 //====================================================================
 

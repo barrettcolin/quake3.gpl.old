@@ -381,10 +381,10 @@ void RE_RenderScene( const refdef_t *fd ) {
 	// convert to GL's 0-at-the-bottom space
 	//
 	Com_Memset( &parms, 0, sizeof( parms ) );
-	parms.viewportX = tr.refdef.x;
-	parms.viewportY = glConfig.vidHeight - ( tr.refdef.y + tr.refdef.height );
-	parms.viewportWidth = tr.refdef.width;
-	parms.viewportHeight = tr.refdef.height;
+	parms.scissorMinX = parms.viewportX = tr.refdef.x;
+	parms.scissorMinY = parms.viewportY = glConfig.vidHeight - ( tr.refdef.y + tr.refdef.height );
+	parms.scissorMaxX = parms.viewportWidth = tr.refdef.width;
+	parms.scissorMaxY = parms.viewportHeight = tr.refdef.height;
 	parms.isPortal = qfalse;
 
 	parms.fovX = tr.refdef.fov_x;

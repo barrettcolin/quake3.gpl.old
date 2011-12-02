@@ -417,8 +417,18 @@ static void SetViewportAndScissor( void ) {
 	// set the window clipping
 	qglViewport( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY, 
 		backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
-	qglScissor( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY, 
-		backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
+
+    if(r_subviewScissor->integer)
+    {
+        qglScissor( backEnd.viewParms.scissorMinX, backEnd.viewParms.scissorMinY, 
+            backEnd.viewParms.scissorMaxX - backEnd.viewParms.scissorMinX, 
+            backEnd.viewParms.scissorMaxY - backEnd.viewParms.scissorMinY );
+    }
+    else
+    {
+        qglScissor( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY, 
+            backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
+    }
 }
 
 /*
