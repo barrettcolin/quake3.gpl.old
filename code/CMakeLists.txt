@@ -1,4 +1,4 @@
-#INCLUDE_DIRECTORIES("C:\\Program Files\\Microsoft Platform SDK for Windows Server 2003 R2\\Include\\mfc")
+INCLUDE_DIRECTORIES("C:\\Program Files\\Microsoft Platform SDK for Windows Server 2003 R2\\Include\\mfc")
 SET(SRCS 
   client/cl_cgame.c
   client/cl_cin.c
