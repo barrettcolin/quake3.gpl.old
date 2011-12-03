@@ -801,13 +801,14 @@ static qboolean IsMirror( const drawSurf_t *drawSurf, int entityNum )
 **
 ** Determines if a surface is completely offscreen.
 */
-static qboolean SurfIsOffscreen( const drawSurf_t *drawSurf, vec4_t clipDest[128], int *numClipDest ) {
+static qboolean SurfIsOffscreen( const drawSurf_t *drawSurf, vec4_t clipDest[128] ) {
 	float shortest = 100000000;
 	int entityNum;
 	int numTriangles;
 	shader_t *shader;
 	int		fogNum;
 	int dlighted;
+	vec4_t clip, eye;
 	int i;
 	unsigned int pointOr = 0;
 	unsigned int pointAnd = (unsigned int)~0;
@@ -822,28 +823,22 @@ static qboolean SurfIsOffscreen( const drawSurf_t *drawSurf, vec4_t clipDest[128
 	RB_BeginSurface( shader, fogNum );
 	rb_surfaceTable[ *drawSurf->surface ]( drawSurf->surface );
 
-	assert( tess.numVertexes <= 128 );
-    if(tess.numVertexes > 128)
-        return qfalse;
-
-    if(numClipDest)
-        *numClipDest = tess.numVertexes;
+	assert( tess.numVertexes < 128 );
 
 	for ( i = 0; i < tess.numVertexes; i++ )
 	{
 		int j;
-        vec4_t eye;
 		unsigned int pointFlags = 0;
 
-		R_TransformModelToClip( tess.xyz[i], tr.or.modelMatrix, tr.viewParms.projectionMatrix, eye, clipDest[i] );
+		R_TransformModelToClip( tess.xyz[i], tr.or.modelMatrix, tr.viewParms.projectionMatrix, eye, clip );
 
 		for ( j = 0; j < 3; j++ )
 		{
-			if ( clipDest[i][j] >= clipDest[i][3] )
+			if ( clip[j] >= clip[3] )
 			{
 				pointFlags |= (1 << (j*2));
 			}
-			else if ( clipDest[i][j] <= -clipDest[i][3] )
+			else if ( clip[j] <= -clip[3] )
 			{
 				pointFlags |= ( 1 << (j*2+1));
 			}
@@ -917,9 +912,6 @@ qboolean R_MirrorViewBySurface (drawSurf_t *drawSurf, int entityNum) {
 	viewParms_t		oldParms;
 	orientation_t	surface, camera;
 
-    int numClipDest, i;
-    short scissorMinX = SHRT_MAX, scissorMaxX = SHRT_MIN, scissorMinY = SHRT_MAX, scissorMaxY = SHRT_MIN;
-
 	// don't recursively mirror
 	if (tr.viewParms.isPortal) {
 		ri.Printf( PRINT_DEVELOPER, "WARNING: recursive mirror/portal found\n" );
@@ -931,7 +923,7 @@ qboolean R_MirrorViewBySurface (drawSurf_t *drawSurf, int entityNum) {
 	}
 
 	// trivially reject portal/mirror
-	if ( SurfIsOffscreen( drawSurf, clipDest, &numClipDest ) ) {
+	if ( SurfIsOffscreen( drawSurf, clipDest ) ) {
 		return qfalse;
 	}
 
@@ -955,27 +947,6 @@ qboolean R_MirrorViewBySurface (drawSurf_t *drawSurf, int entityNum) {
 	R_MirrorVector (oldParms.or.axis[2], &surface, &camera, newParms.or.axis[2]);
 
 	// OPTIMIZE: restrict the viewport on the mirrored view
-    for(i = 0; i < numClipDest; i++)
-    {
-        vec4_t normalized, window;
-        R_TransformClipToWindow(clipDest[i], &newParms, normalized, window);
-
-        scissorMinX = (short)window[0] < scissorMinX ? (short)window[0] : scissorMinX;
-        scissorMinY = (short)window[1] < scissorMinY ? (short)window[1] : scissorMinY;
-        scissorMaxX = (short)window[0] > scissorMaxX ? (short)window[0] : scissorMaxX;
-        scissorMaxY = (short)window[1] > scissorMaxY ? (short)window[1] : scissorMaxY;
-    }
-
-    // Clamp to parent scissor
-    scissorMinX = Com_Clamp(newParms.scissorMinX, newParms.scissorMaxX, scissorMinX);
-    scissorMaxX = Com_Clamp(newParms.scissorMinX, newParms.scissorMaxX, scissorMaxX);
-    scissorMinY = Com_Clamp(newParms.scissorMinY, newParms.scissorMaxY, scissorMinY);
-    scissorMaxY = Com_Clamp(newParms.scissorMinY, newParms.scissorMaxY, scissorMaxY);
-
-    newParms.scissorMinX = scissorMinX;
-    newParms.scissorMaxX = scissorMaxX;
-    newParms.scissorMinY = scissorMinY;
-    newParms.scissorMaxY = scissorMaxY;
 
 	// render the mirror view
 	R_RenderView (&newParms);
@@ -1486,8 +1457,6 @@ void R_RenderView (viewParms_t *parms) {
 	if ( parms->viewportWidth <= 0 || parms->viewportHeight <= 0 ) {
 		return;
 	}
-
-	tr.viewCount++;
 
 	tr.viewParms = *parms;
 	tr.viewParms.frameSceneNum = tr.frameSceneNum;
