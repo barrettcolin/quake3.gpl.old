@@ -12,6 +12,7 @@ SET(SRCS
   tr_main.c
   tr_marks.c
   tr_mesh.c
+  tr_mirror.cc
   tr_model.c
   tr_noise.c
   tr_scene.c
