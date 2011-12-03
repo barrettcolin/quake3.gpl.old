@@ -1121,6 +1121,7 @@ int R_CullPointAndRadius( vec3_t origin, float radius );
 int R_CullLocalPointAndRadius( vec3_t origin, float radius );
 
 void R_RotateForEntity( const trRefEntity_t *ent, const viewParms_t *viewParms, orientationr_t *or );
+void R_RotateForViewer(void);
 
 /*
 ** GL wrapper/helper functions
