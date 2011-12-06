@@ -40,48 +40,43 @@ static void R_MirrorVector (vec3_t in, orientation_t *surface, orientation_t *ca
     }
 }
 
-
-/*
-=============
-R_PlaneForSurface
-=============
-*/
-static void R_PlaneForSurface (surfaceType_t *surfType, cplane_t *plane)
+// Generate a plane given a surfType
+static void PlaneForSurface(surfaceType_t const *const surfType, cplane_t& plane)
 {
-    srfTriangles_t	*tri;
-    srfPoly_t		*poly;
-    drawVert_t		*v1, *v2, *v3;
-    vec4_t			plane4;
+    vec4_t plane4 = { 0, 0, 0, 1 };
 
-    if (!surfType) {
-        Com_Memset (plane, 0, sizeof(*plane));
-        plane->normal[0] = 1;
-        return;
+    if(surfType)
+    {
+        surfaceType_t const st = *surfType;
+
+        switch(st)
+        {
+        case SF_FACE:
+            plane = ((srfSurfaceFace_t *)surfType)->plane;
+            return;
+        case SF_TRIANGLES:
+            {
+                srfTriangles_t const *const tri = (srfTriangles_t *)surfType;
+                PlaneFromPoints(plane4, 
+                    (tri->verts + tri->indexes[0])->xyz, 
+                    (tri->verts + tri->indexes[1])->xyz, 
+                    (tri->verts + tri->indexes[2])->xyz);
+            }
+            break;
+        case SF_POLY:
+            {
+                srfPoly_t const *const poly = (srfPoly_t *)surfType;
+                PlaneFromPoints(plane4, 
+                    poly->verts[0].xyz, 
+                    poly->verts[1].xyz, 
+                    poly->verts[2].xyz);
+            }
+            break;
+        }
     }
-    switch (*surfType) {
-    case SF_FACE:
-        *plane = ((srfSurfaceFace_t *)surfType)->plane;
-        return;
-    case SF_TRIANGLES:
-        tri = (srfTriangles_t *)surfType;
-        v1 = tri->verts + tri->indexes[0];
-        v2 = tri->verts + tri->indexes[1];
-        v3 = tri->verts + tri->indexes[2];
-        PlaneFromPoints( plane4, v1->xyz, v2->xyz, v3->xyz );
-        VectorCopy( plane4, plane->normal ); 
-        plane->dist = plane4[3];
-        return;
-    case SF_POLY:
-        poly = (srfPoly_t *)surfType;
-        PlaneFromPoints( plane4, poly->verts[0].xyz, poly->verts[1].xyz, poly->verts[2].xyz );
-        VectorCopy( plane4, plane->normal ); 
-        plane->dist = plane4[3];
-        return;
-    default:
-        Com_Memset (plane, 0, sizeof(*plane));
-        plane->normal[0] = 1;		
-        return;
-    }
+
+    VectorCopy(plane4, plane.normal);
+    plane.dist = plane4[3];
 }
 
 /*
@@ -94,18 +89,20 @@ be moving and rotating.
 Returns qtrue if it should be mirrored
 =================
 */
-static qboolean R_GetPortalOrientations(drawSurf_t *drawSurf, int entityNum, 
-                                        orientation_t *surface, orientation_t *camera,
-                                        vec3_t pvsOrigin, qboolean *mirror )
+// surface->origin is a point on the portal plane
+// surface->axis[0] is the portal plane normal
+
+static bool GetPortalOrientations(int const entityNum,
+                                  cplane_t const& portalPlane, 
+                                  orientation_t *const surface, 
+                                  orientation_t *const camera,
+                                  vec3_t& pvsOrigin, 
+                                  bool& mirror )
 {
-    int			i;
     cplane_t	originalPlane, plane;
-    trRefEntity_t	*e;
-    float		d;
     vec3_t		transformed;
 
-    // create plane axis for the portal we are seeing
-    R_PlaneForSurface( drawSurf->surface, &originalPlane );
+    originalPlane = portalPlane;
 
     // rotate the plane if necessary
     if ( entityNum != ENTITYNUM_WORLD ) {
@@ -126,51 +123,53 @@ static qboolean R_GetPortalOrientations(drawSurf_t *drawSurf, int entityNum,
         plane = originalPlane;
     }
 
-    VectorCopy( plane.normal, surface->axis[0] );
-    PerpendicularVector( surface->axis[1], surface->axis[0] );
-    CrossProduct( surface->axis[0], surface->axis[1], surface->axis[2] );
+    // surface->axis[0] = plane.normal
+    // surface->axis[1] = perpendicular vector
+    // surface->axis[2] = cross product
+    VectorCopy(plane.normal, surface->axis[0]);
+    PerpendicularVector(surface->axis[1], surface->axis[0]);
+    CrossProduct(surface->axis[0], surface->axis[1], surface->axis[2]);
 
     // locate the portal entity closest to this plane.
     // origin will be the origin of the portal, origin2 will be
     // the origin of the camera
-    for ( i = 0 ; i < tr.refdef.num_entities ; i++ ) {
-        e = &tr.refdef.entities[i];
-        if ( e->e.reType != RT_PORTALSURFACE ) {
+    for(int i = 0 ; i < tr.refdef.num_entities; i++)
+    {
+        trRefEntity_t const *const e = &tr.refdef.entities[i];
+        if(e->e.reType != RT_PORTALSURFACE)
             continue;
-        }
 
-        d = DotProduct( e->e.origin, originalPlane.normal ) - originalPlane.dist;
-        if ( d > 64 || d < -64) {
+        float d = DotProduct(e->e.origin, originalPlane.normal) - originalPlane.dist;
+        if(d > 64 || d < -64)
             continue;
-        }
 
         // get the pvsOrigin from the entity
-        VectorCopy( e->e.oldorigin, pvsOrigin );
+        VectorCopy(e->e.oldorigin, pvsOrigin);
 
         // if the entity is just a mirror, don't use as a camera point
-        if ( e->e.oldorigin[0] == e->e.origin[0] && 
-            e->e.oldorigin[1] == e->e.origin[1] && 
-            e->e.oldorigin[2] == e->e.origin[2] ) {
-                VectorScale( plane.normal, plane.dist, surface->origin );
-                VectorCopy( surface->origin, camera->origin );
-                VectorSubtract( vec3_origin, surface->axis[0], camera->axis[0] );
-                VectorCopy( surface->axis[1], camera->axis[1] );
-                VectorCopy( surface->axis[2], camera->axis[2] );
+        if(VectorCompare(e->e.oldorigin, e->e.origin))
+        {
+            // Need camera parameters to set up clip plane:
+            // camera->origin = plane.normal * plane.dist
+            // camera->axis[0] = -surface->axis[0]
+            VectorScale(plane.normal, plane.dist, camera->origin);
+            VectorSubtract(vec3_origin, surface->axis[0], camera->axis[0]);
 
-                *mirror = qtrue;
-                return qtrue;
+            mirror = true;
+            return true;
         }
 
         // project the origin onto the surface plane to get
         // an origin point we can rotate around
-        d = DotProduct( e->e.origin, plane.normal ) - plane.dist;
-        VectorMA( e->e.origin, -d, surface->axis[0], surface->origin );
+        d = DotProduct(e->e.origin, plane.normal) - plane.dist;
+        // surface->origin = e->e.origin - d * surface->axis[0]
+        VectorMA(e->e.origin, -d, surface->axis[0], surface->origin);
 
         // now get the camera origin and orientation
-        VectorCopy( e->e.oldorigin, camera->origin );
-        AxisCopy( e->e.axis, camera->axis );
-        VectorSubtract( vec3_origin, camera->axis[0], camera->axis[0] );
-        VectorSubtract( vec3_origin, camera->axis[1], camera->axis[1] );
+        VectorCopy(e->e.oldorigin, camera->origin);
+        VectorSubtract(vec3_origin, e->e.axis[0], camera->axis[0]);
+        VectorSubtract(vec3_origin, e->e.axis[1], camera->axis[1]);
+        VectorCopy(e->e.axis[2], camera->axis[2]);
 
         // optionally rotate
         if ( e->e.oldframe ) {
@@ -190,14 +189,16 @@ static qboolean R_GetPortalOrientations(drawSurf_t *drawSurf, int entityNum,
                 CrossProduct( camera->axis[0], camera->axis[1], camera->axis[2] );
             }
         }
-        else if ( e->e.skinNum ) {
+        else if ( e->e.skinNum )
+        {
             d = e->e.skinNum;
             VectorCopy( camera->axis[1], transformed );
             RotatePointAroundVector( camera->axis[1], camera->axis[0], transformed, d );
             CrossProduct( camera->axis[0], camera->axis[1], camera->axis[2] );
         }
-        *mirror = qfalse;
-        return qtrue;
+
+        mirror = false;
+        return true;
     }
 
     // if we didn't locate a portal entity, don't render anything.
@@ -211,9 +212,9 @@ static qboolean R_GetPortalOrientations(drawSurf_t *drawSurf, int entityNum,
 
     //ri.Printf( PRINT_ALL, "Portal surface without a portal entity\n" );
 
-    return qfalse;
+    return false;
 }
-
+#if 0
 static qboolean IsMirror( const drawSurf_t *drawSurf, int entityNum )
 {
     int			i;
@@ -377,7 +378,7 @@ static qboolean SurfIsOffscreen( const drawSurf_t *drawSurf, vec4_t clipDest[128
 
     return qfalse;
 }
-
+#endif
 /*
 ========================
 R_MirrorViewBySurface
@@ -385,52 +386,87 @@ R_MirrorViewBySurface
 Returns qtrue if another view has been rendered
 ========================
 */
-qboolean R_MirrorViewBySurface (drawSurf_t *drawSurf, int entityNum)
+qboolean R_MirrorViewBySurface(drawSurf_t const *const drawSurf, int const entityNum)
 {
-    vec4_t			clipDest[128];
-    viewParms_t		newParms;
-    viewParms_t		oldParms;
-    orientation_t	surface, camera;
-
     // don't recursively mirror
-    if (tr.viewParms.isPortal) {
-        ri.Printf( PRINT_DEVELOPER, "WARNING: recursive mirror/portal found\n" );
+    if(tr.viewParms.isPortal)
+    {
+        ri.Printf(PRINT_DEVELOPER, "WARNING: recursive mirror/portal found\n");
         return qfalse;
     }
 
-    if ( r_noportals->integer || (r_fastsky->integer == 1) ) {
+    if(r_noportals->integer || (r_fastsky->integer == 1))
         return qfalse;
-    }
 
+#if 0
     // trivially reject portal/mirror
     if ( SurfIsOffscreen( drawSurf, clipDest ) ) {
         return qfalse;
     }
+#endif
 
-    // save old viewParms so we can return to it after the mirror view
-    oldParms = tr.viewParms;
+    cplane_t portalPlane;
+    PlaneForSurface(drawSurf->surface, portalPlane);
 
-    newParms = tr.viewParms;
-    newParms.isPortal = qtrue;
-    if ( !R_GetPortalOrientations( drawSurf, entityNum, &surface, &camera, 
-        newParms.pvsOrigin, &newParms.isMirror ) ) {
-            return qfalse;		// bad portal, no portalentity
+    orientation_t surface, camera;
+    vec3_t pvs_origin;
+    bool is_mirror;
+    if(!GetPortalOrientations(entityNum, portalPlane, &surface, &camera, pvs_origin, is_mirror))
+    {
+        // bad portal, no portalentity
+        return qfalse;
     }
 
-    R_MirrorPoint (oldParms.or.origin, &surface, &camera, newParms.or.origin );
+    // Set up new viewParms
+    viewParms_t newParms = tr.viewParms;
+    {
+        newParms.isPortal = qtrue;
+        VectorCopy(pvs_origin, newParms.pvsOrigin);
+        if(is_mirror)
+        {
+            newParms.isMirror = qtrue;
 
-    VectorSubtract( vec3_origin, camera.axis[0], newParms.portalPlane.normal );
-    newParms.portalPlane.dist = DotProduct( camera.origin, newParms.portalPlane.normal );
+            // reflect origin (point)
+            float const d = DotProduct(portalPlane.normal, tr.viewParms.or.origin) - portalPlane.dist;
+            VectorMA(tr.viewParms.or.origin, -2.0f * d, portalPlane.normal, newParms.or.origin);
 
-    R_MirrorVector (oldParms.or.axis[0], &surface, &camera, newParms.or.axis[0]);
-    R_MirrorVector (oldParms.or.axis[1], &surface, &camera, newParms.or.axis[1]);
-    R_MirrorVector (oldParms.or.axis[2], &surface, &camera, newParms.or.axis[2]);
+            // reflect axis (vectors)
+            for(int i = 0; i < 3; i++)
+            {
+                float const dv = DotProduct(portalPlane.normal, tr.viewParms.or.axis[i]);
+                VectorMA(tr.viewParms.or.axis[i], -2.0f * dv, portalPlane.normal, newParms.or.axis[i]);
+            }
+        }
+        else
+        {
+            newParms.isMirror = qfalse;
+
+            vec3_t offset;
+            // offset = tr.viewParms.or.origin + surface.origin
+            // newParms.or.origin = camera.origin + offset
+            //VectorCopy(camera.origin, newParms.or.origin);
+            //VectorSubtract(tr.viewParms.or.origin, surface.origin, offset);
+            //VectorAdd(camera.origin, offset, newParms.or.origin);
+            //AxisCopy(camera.axis, newParms.or.axis);
+
+            R_MirrorPoint(tr.viewParms.or.origin, &surface, &camera, newParms.or.origin);
+            R_MirrorVector(tr.viewParms.or.axis[0], &surface, &camera, newParms.or.axis[0]);
+            R_MirrorVector(tr.viewParms.or.axis[1], &surface, &camera, newParms.or.axis[1]);
+            R_MirrorVector(tr.viewParms.or.axis[2], &surface, &camera, newParms.or.axis[2]);
+        }
+
+        // Set up portal clip plane
+        // newParms.portalPlane.normal = -camera.axis[0]
+        // newParms.portalPlane.dist = dot(camera.origin, newParms.portalPlane.normal)
+        VectorSubtract(vec3_origin, camera.axis[0], newParms.portalPlane.normal);
+        newParms.portalPlane.dist = DotProduct(camera.origin, newParms.portalPlane.normal);
+    }
 
     // OPTIMIZE: restrict the viewport on the mirrored view
 
-    // render the mirror view
-    R_RenderView (&newParms);
-
+    // save old viewParms so we can return to it after the mirror view
+    viewParms_t oldParms = tr.viewParms;
+    R_RenderView(&newParms);
     tr.viewParms = oldParms;
 
     return qtrue;

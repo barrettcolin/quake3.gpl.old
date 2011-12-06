@@ -1610,6 +1610,6 @@ void R_DoneFreeType();
 void RE_RegisterFont(const char *fontName, int pointSize, fontInfo_t *font);
 
 // tr_mirror.cc
-qboolean R_MirrorViewBySurface(drawSurf_t *drawSurf, int entityNum);
+qboolean R_MirrorViewBySurface(drawSurf_t const *const drawSurf, int const entityNum);
 
 #endif //TR_LOCAL_H
