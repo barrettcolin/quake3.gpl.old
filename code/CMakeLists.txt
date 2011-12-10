@@ -78,6 +78,6 @@ SET(SRCS
   win32/win_local.h
   win32/qe3.ico
   win32/winquake.rc)
-ADD_EXECUTABLE(Quake3 WIN32 ${SRCS})
-ADD_DEPENDENCIES(Quake3 Renderer BotLib)
-TARGET_LINK_LIBRARIES(Quake3 Renderer BotLib winmm wsock32)
+ADD_EXECUTABLE(trinity WIN32 ${SRCS})
+ADD_DEPENDENCIES(trinity Renderer BotLib)
+TARGET_LINK_LIBRARIES(trinity Renderer BotLib winmm wsock32)
