@@ -12,7 +12,6 @@ SET(SRCS
   tr_main.c
   tr_marks.c
   tr_mesh.c
-  tr_mirror.cc
   tr_model.c
   tr_noise.c
   tr_scene.c
@@ -21,6 +20,7 @@ SET(SRCS
   tr_shader.c
   tr_shadows.c
   tr_sky.c
+  tr_subview.cc
   tr_surface.c
   tr_world.c
   ../win32/win_gamma.c

@@ -1609,7 +1609,7 @@ void R_InitFreeType();
 void R_DoneFreeType();
 void RE_RegisterFont(const char *fontName, int pointSize, fontInfo_t *font);
 
-// tr_mirror.cc
-qboolean R_MirrorViewBySurface(drawSurf_t const *const drawSurf, int const entityNum);
+// tr_subview.cc
+qboolean R_SubviewViewBySurface(drawSurf_t const *const drawSurf, int const entityNum);
 
 #endif //TR_LOCAL_H
