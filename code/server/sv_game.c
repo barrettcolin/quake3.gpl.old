@@ -819,48 +819,6 @@ int SV_GameSystemCalls( int *args ) {
 	case BOTLIB_AI_GENETIC_PARENTS_AND_CHILD_SELECTION:
 		return botlib_export->ai.GeneticParentsAndChildSelection(args[1], VMA(2), VMA(3), VMA(4), VMA(5));
 
-	case TRAP_MEMSET:
-		Com_Memset( VMA(1), args[2], args[3] );
-		return 0;
-
-	case TRAP_MEMCPY:
-		Com_Memcpy( VMA(1), VMA(2), args[3] );
-		return 0;
-
-	case TRAP_STRNCPY:
-		return (int)strncpy( VMA(1), VMA(2), args[3] );
-
-	case TRAP_SIN:
-		return FloatAsInt( sin( VMF(1) ) );
-
-	case TRAP_COS:
-		return FloatAsInt( cos( VMF(1) ) );
-
-	case TRAP_ATAN2:
-		return FloatAsInt( atan2( VMF(1), VMF(2) ) );
-
-	case TRAP_SQRT:
-		return FloatAsInt( sqrt( VMF(1) ) );
-
-	case TRAP_MATRIXMULTIPLY:
-		MatrixMultiply( VMA(1), VMA(2), VMA(3) );
-		return 0;
-
-	case TRAP_ANGLEVECTORS:
-		AngleVectors( VMA(1), VMA(2), VMA(3), VMA(4) );
-		return 0;
-
-	case TRAP_PERPENDICULARVECTOR:
-		PerpendicularVector( VMA(1), VMA(2) );
-		return 0;
-
-	case TRAP_FLOOR:
-		return FloatAsInt( floor( VMF(1) ) );
-
-	case TRAP_CEIL:
-		return FloatAsInt( ceil( VMF(1) ) );
-
-
 	default:
 		Com_Error( ERR_DROP, "Bad game system trap: %i", args[0] );
 	}

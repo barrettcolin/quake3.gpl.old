@@ -291,24 +291,6 @@ typedef enum {
 	VMI_COMPILED
 } vmInterpret_t;
 
-typedef enum {
-	TRAP_MEMSET = 100,
-	TRAP_MEMCPY,
-	TRAP_STRNCPY,
-	TRAP_SIN,
-	TRAP_COS,
-	TRAP_ATAN2,
-	TRAP_SQRT,
-	TRAP_MATRIXMULTIPLY,
-	TRAP_ANGLEVECTORS,
-	TRAP_PERPENDICULARVECTOR,
-	TRAP_FLOOR,
-	TRAP_CEIL,
-
-	TRAP_TESTPRINTINT,
-	TRAP_TESTPRINTFLOAT
-} sharedTraps_t;
-
 void	VM_Init( void );
 vm_t	*VM_Create( const char *module, int (*systemCalls)(int *), 
 				   vmInterpret_t interpret );
