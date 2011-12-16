@@ -310,14 +310,6 @@ void RE_RenderScene( const refdef_t *fd ) {
 	tr.refdef.y = fd->y;
 	tr.refdef.width = fd->width;
 	tr.refdef.height = fd->height;
-	tr.refdef.fov_x = fd->fov_x;
-	tr.refdef.fov_y = fd->fov_y;
-
-	VectorCopy( fd->vieworg, tr.refdef.vieworg );
-	VectorCopy( fd->viewaxis[0], tr.refdef.viewaxis[0] );
-	VectorCopy( fd->viewaxis[1], tr.refdef.viewaxis[1] );
-	VectorCopy( fd->viewaxis[2], tr.refdef.viewaxis[2] );
-
 	tr.refdef.time = fd->time;
 	tr.refdef.rdflags = fd->rdflags;
 
@@ -387,8 +379,8 @@ void RE_RenderScene( const refdef_t *fd ) {
 	parms.scissorMaxY = parms.viewportHeight = tr.refdef.height;
 	parms.isPortal = qfalse;
 
-	parms.fovX = tr.refdef.fov_x;
-	parms.fovY = tr.refdef.fov_y;
+	parms.fovX = fd->fov_x;
+	parms.fovY = fd->fov_y;
 
 	VectorCopy( fd->vieworg, parms.or.origin );
 	VectorCopy( fd->viewaxis[0], parms.or.axis[0] );

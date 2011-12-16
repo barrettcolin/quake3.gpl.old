@@ -149,6 +149,7 @@ cvar_t	*r_maxpolyverts;
 int		max_polyverts;
 
 cvar_t *r_subviewScissor;
+cvar_t *r_subviewStencil;
 
 void ( APIENTRY * qglMultiTexCoord2fARB )( GLenum texture, GLfloat s, GLfloat t );
 void ( APIENTRY * qglActiveTextureARB )( GLenum texture );
@@ -995,7 +996,8 @@ void R_Register( void )
 	r_maxpolys = ri.Cvar_Get( "r_maxpolys", va("%d", MAX_POLYS), 0);
 	r_maxpolyverts = ri.Cvar_Get( "r_maxpolyverts", va("%d", MAX_POLYVERTS), 0);
 
-	r_subviewScissor = ri.Cvar_Get("r_subviewScissor", "1", CVAR_CHEAT);
+    r_subviewScissor = ri.Cvar_Get("r_subviewScissor", "1", CVAR_CHEAT);
+    r_subviewStencil = ri.Cvar_Get("r_subviewStencil", "1", CVAR_CHEAT);
 
 	// make sure all the commands added here are also
 	// removed in R_Shutdown

@@ -912,6 +912,46 @@ const void *RB_StretchPic ( const void *data ) {
 	return (const void *)(cmd + 1);
 }
 
+// stencil_surf0: clear stencil; draw, incrementing stencil where stencil == 0
+// stencil_surf1: draw, incrementing stencil where stencil == 1
+// ...
+// stencil_surfN: draw, incrementing stencil where stencil == N
+// draw_surfN: disable stencil write, color where stencil == N+1
+// ...
+// draw_surf1: color where stencil == 2
+// draw_surf0: color where stencil == 1, disable stencil test
+void const* RB_StencilSurf(void const* data)
+{
+    stencilSurfCommand_t const* const cmd = (stencilSurfCommand_t const* const)data;
+
+    // Finish any 2D drawing if needed
+    if(tess.numIndexes)
+        RB_EndSurface();
+
+    backEnd.refdef = cmd->refdef;
+    backEnd.viewParms = cmd->viewParms;
+
+    if(r_subviewStencil->integer)
+    {
+        // First stencil surface for this view
+        if(0 == backEnd.stencil_level)
+        {
+            assert(qfalse == backEnd.stencil_draw);
+            qglClear(GL_STENCIL_BUFFER_BIT);
+            qglEnable(GL_STENCIL_TEST);
+            // sfail/dpfail: KEEP, dppass: INCR
+            qglStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
+            backEnd.stencil_draw = qtrue;
+        }
+
+        qglStencilFunc(GL_EQUAL, backEnd.stencil_level, ~0U);
+        backEnd.stencil_level++;
+    }
+
+    RB_RenderDrawSurfList(cmd->drawSurf, 1);
+
+    return cmd + 1;
+}
 
 /*
 =============
@@ -932,7 +972,25 @@ const void	*RB_DrawSurfs( const void *data ) {
 	backEnd.refdef = cmd->refdef;
 	backEnd.viewParms = cmd->viewParms;
 
+    if(qtrue == backEnd.stencil_draw)
+    {
+        qglStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+        backEnd.stencil_draw = qfalse;
+    }
+
+    if(backEnd.stencil_level)
+    {
+        qglStencilFunc(GL_EQUAL, backEnd.stencil_level, ~0U);
+        backEnd.stencil_level--;
+    }
+
 	RB_RenderDrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
+
+    if(r_subviewStencil->integer)
+    {
+        if(0 == backEnd.stencil_level)
+            qglDisable(GL_STENCIL_TEST);
+    }
 
 	return (const void *)(cmd + 1);
 }
@@ -1093,6 +1151,8 @@ void RB_ExecuteRenderCommands( const void *data ) {
 		backEnd.smpFrame = 1;
 	}
 
+    assert(0 == backEnd.stencil_level);
+
 	while ( 1 ) {
 		switch ( *(const int *)data ) {
 		case RC_SET_COLOR:
@@ -1101,6 +1161,9 @@ void RB_ExecuteRenderCommands( const void *data ) {
 		case RC_STRETCH_PIC:
 			data = RB_StretchPic( data );
 			break;
+        case RC_STENCIL_SURF:
+            data = RB_StencilSurf(data);
+            break;
 		case RC_DRAW_SURFS:
 			data = RB_DrawSurfs( data );
 			break;

@@ -210,6 +210,17 @@ void *R_GetCommandBuffer( int bytes ) {
 	return cmdList->cmds + cmdList->used - bytes;
 }
 
+void R_AddStencilSurfCmd(drawSurf_t const *const draw_surf)
+{
+    stencilSurfCommand_t *const cmd = R_GetCommandBuffer(sizeof(*cmd));
+    if(!cmd)
+        return;
+
+    cmd->commandId = RC_STENCIL_SURF;
+    cmd->refdef = tr.refdef;
+    cmd->viewParms = tr.viewParms;
+    cmd->drawSurf = (drawSurf_t *)draw_surf;
+}
 
 /*
 =============

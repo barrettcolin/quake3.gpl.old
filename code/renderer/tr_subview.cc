@@ -152,6 +152,9 @@ qboolean R_SubviewViewBySurface(drawSurf_t const *const drawSurf, int const enti
     if(r_noportals->integer || (r_fastsky->integer == 1))
         return qfalse;
 
+    // Add stencil surface
+    R_AddStencilSurfCmd(drawSurf);
+
     // TODO: portal surfaces part of non-world entities
     cplane_t portalPlane;
     PlaneForSurface(drawSurf->surface, portalPlane);

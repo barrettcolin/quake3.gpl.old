@@ -429,10 +429,6 @@ typedef struct shaderState_s {
 // as well as the locally generated scene information
 typedef struct {
 	int			x, y, width, height;
-	float		fov_x, fov_y;
-	vec3_t		vieworg;
-	vec3_t		viewaxis[3];		// transformation matrix
-
 	int			time;				// time in milliseconds for shader effects and other time dependent rendering issues
 	int			rdflags;			// RDF_NOWORLDMODEL, etc
 
@@ -862,6 +858,9 @@ typedef struct {
 	byte		color2D[4];
 	qboolean	vertexes2D;		// shader needs to be finished
 	trRefEntity_t	entity2D;	// currentEntity will point at this when doing 2D rendering
+
+    qboolean stencil_draw;
+    int stencil_level;
 } backEndState_t;
 
 /*
@@ -1087,6 +1086,7 @@ extern	cvar_t	*r_printShaders;
 extern	cvar_t	*r_saveFontData;
 
 extern cvar_t *r_subviewScissor;
+extern cvar_t *r_subviewStencil;
 
 //====================================================================
 
@@ -1529,6 +1529,14 @@ typedef struct {
 	float	s2, t2;
 } stretchPicCommand_t;
 
+typedef struct
+{
+    int commandId;
+    trRefdef_t refdef;
+    viewParms_t viewParms;
+    drawSurf_t *drawSurf;
+} stencilSurfCommand_t;
+
 typedef struct {
 	int		commandId;
 	trRefdef_t	refdef;
@@ -1551,6 +1559,7 @@ typedef enum {
 	RC_END_OF_LIST,
 	RC_SET_COLOR,
 	RC_STRETCH_PIC,
+    RC_STENCIL_SURF,
 	RC_DRAW_SURFS,
 	RC_DRAW_BUFFER,
 	RC_SWAP_BUFFERS,
@@ -1595,6 +1604,7 @@ void R_ShutdownCommandBuffers( void );
 
 void R_SyncRenderThread( void );
 
+void R_AddStencilSurfCmd(drawSurf_t const *const draw_surf);
 void R_AddDrawSurfCmd( drawSurf_t *drawSurfs, int numDrawSurfs );
 
 void RE_SetColor( const float *rgba );

@@ -460,10 +460,10 @@ void R_SetupProjection( void ) {
 	zNear	= r_znear->value;
 	zFar	= tr.viewParms.zFar;
 
-	ymax = zNear * tan( tr.refdef.fov_y * M_PI / 360.0f );
+    ymax = zNear * tan( tr.viewParms.fovY * M_PI / 360.0f );
 	ymin = -ymax;
 
-	xmax = zNear * tan( tr.refdef.fov_x * M_PI / 360.0f );
+    xmax = zNear * tan( tr.viewParms.fovX * M_PI / 360.0f );
 	xmin = -xmax;
 
 	width = xmax - xmin;
