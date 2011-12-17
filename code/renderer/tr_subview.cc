@@ -143,11 +143,8 @@ static void PortalViewParms(cplane_t const& portalPlane, orientationr_t const& v
 qboolean R_SubviewViewBySurface(drawSurf_t const *const drawSurf, int const entityNum)
 {
     // don't recursively mirror
-    if(tr.viewParms.isPortal)
-    {
-        ri.Printf(PRINT_DEVELOPER, "WARNING: recursive mirror/portal found\n");
+    if(tr.viewParms.isPortal && tr.subviewLevel >= r_subviewRecurse->integer)
         return qfalse;
-    }
 
     if(r_noportals->integer || (r_fastsky->integer == 1))
         return qfalse;
@@ -179,7 +176,9 @@ qboolean R_SubviewViewBySurface(drawSurf_t const *const drawSurf, int const enti
             PortalViewParms(portalPlane, tr.viewParms.or, ent, newParms);
 
         viewParms_t oldParms = tr.viewParms;
+        tr.subviewLevel++;
         R_RenderView(&newParms);
+        tr.subviewLevel--;
         tr.viewParms = oldParms;
         return qtrue;
     }

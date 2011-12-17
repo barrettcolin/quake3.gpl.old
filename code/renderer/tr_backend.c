@@ -939,6 +939,7 @@ void const* RB_StencilSurf(void const* data)
             assert(qfalse == backEnd.stencil_draw);
             qglClear(GL_STENCIL_BUFFER_BIT);
             qglEnable(GL_STENCIL_TEST);
+            backEnd.stencil_test = qtrue;
             // sfail/dpfail: KEEP, dppass: INCR
             qglStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
             backEnd.stencil_draw = qtrue;
@@ -972,24 +973,30 @@ const void	*RB_DrawSurfs( const void *data ) {
 	backEnd.refdef = cmd->refdef;
 	backEnd.viewParms = cmd->viewParms;
 
-    if(qtrue == backEnd.stencil_draw)
+    if(r_subviewStencil->integer)
     {
-        qglStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-        backEnd.stencil_draw = qfalse;
-    }
+        if(qtrue == backEnd.stencil_draw)
+        {
+            qglStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+            backEnd.stencil_draw = qfalse;
+        }
 
-    if(backEnd.stencil_level)
-    {
-        qglStencilFunc(GL_EQUAL, backEnd.stencil_level, ~0U);
-        backEnd.stencil_level--;
+        if(backEnd.stencil_level)
+        {
+            qglStencilFunc(GL_EQUAL, backEnd.stencil_level, ~0U);
+            backEnd.stencil_level--;
+        }
     }
 
 	RB_RenderDrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
 
     if(r_subviewStencil->integer)
     {
-        if(0 == backEnd.stencil_level)
+        if(backEnd.stencil_test && 0 == backEnd.stencil_level)
+        {
             qglDisable(GL_STENCIL_TEST);
+            backEnd.stencil_test = qfalse;
+        }
     }
 
 	return (const void *)(cmd + 1);

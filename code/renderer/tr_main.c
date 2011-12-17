@@ -810,6 +810,7 @@ void R_SortDrawSurfs( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	int				entityNum;
 	int				dlighted;
 	int				i;
+    int num_subviews = 0;
 
 	// it is possible for some views to not have any surfaces
 	if ( numDrawSurfs < 1 ) {
@@ -842,17 +843,12 @@ void R_SortDrawSurfs( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 			ri.Error (ERR_DROP, "Shader '%s'with sort == SS_BAD", shader->name );
 		}
 
-		// if the mirror was completely clipped away, we may need to check another surface
-		if ( R_SubviewViewBySurface( (drawSurfs+i), entityNum) ) {
-			// this is a debug option to see exactly what is being mirrored
-			if ( r_portalOnly->integer ) {
-				return;
-			}
-			break;		// only one mirror view at a time
-		}
+        R_SubviewViewBySurface(drawSurfs + i, entityNum);
+        num_subviews++;
 	}
 
-	R_AddDrawSurfCmd( drawSurfs, numDrawSurfs );
+    if(tr.viewParms.isPortal || 0 == num_subviews || !(r_portalOnly->integer))
+        R_AddDrawSurfCmd(drawSurfs, numDrawSurfs);
 }
 
 /*

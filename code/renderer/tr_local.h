@@ -859,6 +859,7 @@ typedef struct {
 	qboolean	vertexes2D;		// shader needs to be finished
 	trRefEntity_t	entity2D;	// currentEntity will point at this when doing 2D rendering
 
+    qboolean stencil_test;
     qboolean stencil_draw;
     int stencil_level;
 } backEndState_t;
@@ -930,6 +931,8 @@ typedef struct {
 
 	frontEndCounters_t		pc;
 	int						frontEndMsec;		// not in pc due to clearing issue
+
+    int subviewLevel;
 
 	//
 	// put large tables at the end, so most elements will be
@@ -1087,6 +1090,7 @@ extern	cvar_t	*r_saveFontData;
 
 extern cvar_t *r_subviewScissor;
 extern cvar_t *r_subviewStencil;
+extern cvar_t *r_subviewRecurse;
 
 //====================================================================
 
