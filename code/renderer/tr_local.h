@@ -501,6 +501,8 @@ typedef struct {
 	cplane_t	frustum[4];
 	vec3_t		visBounds[2];
 	float		zFar;
+
+    int subview_level;
 } viewParms_t;
 
 
@@ -839,6 +841,8 @@ typedef struct {
 	int		c_flareTests;
 	int		c_flareRenders;
 
+    int c_stencilSurfaces;
+
 	int		msec;			// total msec for backend run
 } backEndCounters_t;
 
@@ -931,8 +935,6 @@ typedef struct {
 
 	frontEndCounters_t		pc;
 	int						frontEndMsec;		// not in pc due to clearing issue
-
-    int subviewLevel;
 
 	//
 	// put large tables at the end, so most elements will be

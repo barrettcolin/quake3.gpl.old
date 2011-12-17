@@ -389,7 +389,7 @@ void RE_RenderScene( const refdef_t *fd ) {
 
 	VectorCopy( fd->vieworg, parms.pvsOrigin );
 
-    assert(0 == tr.subviewLevel);
+    parms.subview_level = 0;
 	R_RenderView( &parms );
 
 	// the next scene rendered in this frame will tack on after this one
