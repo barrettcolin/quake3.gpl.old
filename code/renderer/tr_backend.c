@@ -947,10 +947,10 @@ void const* RB_StencilSurf(void const* data)
 
         qglStencilFunc(GL_EQUAL, backEnd.stencil_level, ~0U);
         backEnd.stencil_level++;
-    }
 
-    RB_RenderDrawSurfList(cmd->drawSurf, 1);
-    backEnd.pc.c_stencilSurfaces++;
+        RB_RenderDrawSurfList(cmd->drawSurf, 1);
+        backEnd.pc.c_stencilSurfaces++;
+    }
 
     return cmd + 1;
 }
@@ -970,13 +970,13 @@ const void	*RB_DrawSurfs( const void *data ) {
 	}
 
 	cmd = (const drawSurfsCommand_t *)data;
-    assert(backEnd.stencil_level == cmd->viewParms.subview_level);
 
 	backEnd.refdef = cmd->refdef;
 	backEnd.viewParms = cmd->viewParms;
 
     if(r_subviewStencil->integer)
     {
+        assert(backEnd.stencil_level == cmd->viewParms.subview_level);
         if(qtrue == backEnd.stencil_draw)
         {
             qglStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
