@@ -230,7 +230,6 @@ void SP_misc_portal_camera(gentity_t *ent) {
 
 	VectorClear( ent->r.mins );
 	VectorClear( ent->r.maxs );
-	trap_LinkEntity (ent);
 
 	G_SpawnFloat( "roll", "0", &roll );
 
