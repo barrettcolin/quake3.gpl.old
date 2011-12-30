@@ -90,20 +90,24 @@ static void PortalViewBob(refEntity_t const& ent, vec3_t& camera_axis0, vec3_t& 
     }
 }
 
-static void PortalViewParms(cplane_t const& portalPlane, orientationr_t const& viewIn, refEntity_t const& ent, viewParms_t& viewOut)
+static void PortalViewParms(cplane_t const& portalPlane, 
+                            orientationr_t const& viewIn, 
+                            refEntity_t const& misc_portal_surface, 
+                            vec3_t const& misc_portal_surface_world_origin, 
+                            viewParms_t& viewOut)
 {
     viewOut.isMirror = qfalse;
 
     // Need to copy these for remote view bobbing
     vec3_t camera_axis0, camera_axis1, camera_axis2;
     {
-        VectorCopy(ent.axis[0], camera_axis0);
-        VectorCopy(ent.axis[1], camera_axis1);
-        VectorCopy(ent.axis[2], camera_axis2);
-        PortalViewBob(ent, camera_axis0, camera_axis1, camera_axis2);
+        VectorCopy(misc_portal_surface.axis[0], camera_axis0);
+        VectorCopy(misc_portal_surface.axis[1], camera_axis1);
+        VectorCopy(misc_portal_surface.axis[2], camera_axis2);
+        PortalViewBob(misc_portal_surface, camera_axis0, camera_axis1, camera_axis2);
     }
 
-    vec3_t const& camera_origin = ent.oldorigin;
+    vec3_t const& camera_origin = misc_portal_surface.oldorigin;
     {
         // surface
         vec3_t surface_axis1, surface_axis2, surface_origin;
@@ -111,8 +115,8 @@ static void PortalViewParms(cplane_t const& portalPlane, orientationr_t const& v
             PerpendicularVector(surface_axis1, portalPlane.normal);
             CrossProduct(portalPlane.normal, surface_axis1, surface_axis2);
 
-            float const d = DotProduct(ent.origin, portalPlane.normal) - portalPlane.dist;
-            VectorMA(ent.origin, -d, portalPlane.normal, surface_origin);
+            float const d = DotProduct(misc_portal_surface_world_origin, portalPlane.normal) - portalPlane.dist;
+            VectorMA(misc_portal_surface_world_origin, -d, portalPlane.normal, surface_origin);
         }
 
         // view origin
@@ -122,7 +126,7 @@ static void PortalViewParms(cplane_t const& portalPlane, orientationr_t const& v
             VectorMA(vec3_origin, -DotProduct(view_offset, portalPlane.normal), camera_axis0, viewOut.or.origin);
             VectorMA(viewOut.or.origin, -DotProduct(view_offset, surface_axis1), camera_axis1, viewOut.or.origin);
             VectorMA(viewOut.or.origin, DotProduct(view_offset, surface_axis2), camera_axis2, viewOut.or.origin);
-            VectorAdd(viewOut.or.origin, ent.oldorigin, viewOut.or.origin);
+            VectorAdd(viewOut.or.origin, misc_portal_surface.oldorigin, viewOut.or.origin);
         }
 
         // view axes
@@ -140,9 +144,9 @@ static void PortalViewParms(cplane_t const& portalPlane, orientationr_t const& v
 }
 
 // Returns qtrue if another view has been rendered
-qboolean R_SubviewViewBySurface(drawSurf_t const *const drawSurf, int const entityNum)
+qboolean R_SubviewViewBySurface(drawSurf_t const *const drawSurf, int const drawSurfEntityNum)
 {
-    // don't recursively mirror
+    // Limit mirror recursions
     if(tr.viewParms.isPortal && tr.viewParms.subview_level >= r_subviewRecurse->integer)
         return qfalse;
 
@@ -152,33 +156,60 @@ qboolean R_SubviewViewBySurface(drawSurf_t const *const drawSurf, int const enti
     // Add stencil surface
     R_AddStencilSurfCmd(drawSurf);
 
-    // TODO: portal surfaces part of non-world entities
-    cplane_t portalPlane;
-    PlaneForSurface(drawSurf->surface, portalPlane);
+    // Portal plane
+    cplane_t originalPlane, portalPlane;
+    PlaneForSurface(drawSurf->surface, originalPlane);
 
-    viewParms_t newParms = tr.viewParms;
-    newParms.isPortal = qtrue;
+    bool const draw_surf_entity_is_world = (ENTITYNUM_WORLD == drawSurfEntityNum);
+    if(!draw_surf_entity_is_world)
+    {
+        // write portal surface entity orientation to tr.or
+        R_RotateForEntity(&tr.refdef.entities[drawSurfEntityNum], &tr.viewParms, &tr.or);
+        // transform by tr.or
+        R_LocalNormalToWorld(originalPlane.normal, portalPlane.normal);
+        // portal plane is relative to entity origin; move to world
+        portalPlane.dist = DotProduct(portalPlane.normal, tr.or.origin) + originalPlane.dist;
+        // original plane is relative to entity origin; move to world
+        originalPlane.dist += DotProduct(originalPlane.normal, tr.or.origin);
+    }
+    else
+        portalPlane = originalPlane;
+
+    viewParms_t new_parms = tr.viewParms;
+    new_parms.isPortal = qtrue;
     for(int i = 0 ; i < tr.refdef.num_entities; i++)
     {
-        refEntity_t const& ent = tr.refdef.entities[i].e;
+        refEntity_t const& misc_portal_surface = tr.refdef.entities[i].e;
 
-        if(ent.reType != RT_PORTALSURFACE)
+        if(misc_portal_surface.reType != RT_PORTALSURFACE)
             continue;
 
-        float const d = DotProduct(ent.origin, portalPlane.normal) - portalPlane.dist;
+        float const d = DotProduct(misc_portal_surface.origin, originalPlane.normal) - originalPlane.dist;
         if(d > 64 || d < -64)
             continue;
 
-        VectorCopy(ent.oldorigin, newParms.pvsOrigin);
-        if(VectorCompare(ent.oldorigin, ent.origin))
-            MirrorViewParms(portalPlane, tr.viewParms.or, newParms);
+        vec3_t misc_portal_surface_world;
+        if(!draw_surf_entity_is_world)
+        {
+            vec3_t misc_portal_surface_local;
+            // misc_portal_surface_local = misc_portal_surface.origin - tr.or.origin
+            VectorSubtract(misc_portal_surface.origin, tr.or.origin, misc_portal_surface_local);
+            // misc_portal_surface_world = misc_portal_surface_local * tr.or
+            R_LocalPointToWorld(misc_portal_surface_local, misc_portal_surface_world);
+        }
         else
-            PortalViewParms(portalPlane, tr.viewParms.or, ent, newParms);
+            VectorCopy(misc_portal_surface.origin, misc_portal_surface_world);
 
-        viewParms_t oldParms = tr.viewParms;
-        newParms.subview_level = oldParms.subview_level + 1;
-        R_RenderView(&newParms);
-        tr.viewParms = oldParms;
+        VectorCopy(misc_portal_surface.oldorigin, new_parms.pvsOrigin);
+        if(VectorCompare(misc_portal_surface.oldorigin, misc_portal_surface.origin))
+            MirrorViewParms(portalPlane, tr.viewParms.or, new_parms);
+        else
+            PortalViewParms(portalPlane, tr.viewParms.or, misc_portal_surface, misc_portal_surface_world, new_parms);
+
+        viewParms_t old_parms = tr.viewParms;
+        new_parms.subview_level = old_parms.subview_level + 1;
+        R_RenderView(&new_parms);
+        tr.viewParms = old_parms;
         return qtrue;
     }
 
